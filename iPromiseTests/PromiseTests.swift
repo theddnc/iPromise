@@ -278,8 +278,10 @@ class PromiseTests: XCTestCase {
     }
     
     func testRaceFailure() {
-        let bigInt = 10000000
-        let promises: [Promise] = self.promiseArray(bigInt, failing: true)
+        let promises: [Promise] = [
+            Promise.reject(false),
+            Promise.reject(false)
+        ]
         
         expect { testExpectation in
             let promise = Promise.race(promises)
