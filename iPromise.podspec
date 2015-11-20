@@ -14,8 +14,12 @@ Pod::Spec.new do |s|
 
   s.homepage     = "https://github.com/theddnc/iPromise"
   s.license      = "MIT"
-  s.author       = { "Jakub Zaczek" => "zaczekjakub@gmail.com" }
+  s.author             = { "Jakub Zaczek" => "zaczekjakub@gmail.com" }
+
   s.platform     = :ios, "8.0"
-  s.source       = { :git => "https://github.com/theddnc/iPromise.git", :tag => "0.2.0" }
+
+  s.source       = { :git => "https://github.com/theddnc/iPromise.git", :tag => "v0.2.0" }
+  s.source_files  = "iPromise/*"
+  s.framework = 'XCTest'
 
 end
