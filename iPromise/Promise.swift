@@ -36,7 +36,7 @@ public class Promise {
     - **Fulfilled**: resolved with success - a *result* is available: ```Promise.result```
     - **Rejected**: resolved with failure - a *reason of rejection* is available: ```Promise.reason```
     */
-    private enum State {
+    public enum State {
         case Pending
         case Fulfilled
         case Rejected
@@ -47,9 +47,15 @@ public class Promise {
     //
     
     /// Promise's internal state, described by ```Promise.State``` enum.
-    private var state: State {
+    private var _state: State {
         didSet {
-            self.stateChanged(state)
+            self.stateChanged(_state)
+        }
+    }
+    
+    public var state: State {
+        get {
+            return _state
         }
     }
     
@@ -99,7 +105,7 @@ public class Promise {
     - Parameter state: A state the promise is in (see: ```Promise.state```)
     */
     private init(state: State) {
-        self.state = state
+        self._state = state
         self.onSuccessQueue = Queue<HandlerFunction>()
         self.onFailureQueue = Queue<HandlerFunction>()
     }
@@ -131,7 +137,7 @@ public class Promise {
     public func then(onSuccess: HandlerFunction? = nil, onFailure: HandlerFunction? = nil) -> Promise {
         let newPromise = Promise(state: .Pending)
         
-        switch state {
+        switch _state {
         
         case .Pending:
             
@@ -328,7 +334,7 @@ public class Promise {
         }
         else {
             self._result = result
-            self.state = .Fulfilled
+            self._state = .Fulfilled
         }
     }
     
@@ -339,7 +345,7 @@ public class Promise {
     */
     private func reject(reason: Any) {
         self._reason = reason
-        self.state = .Rejected
+        self._state = .Rejected
     }
     
     //
@@ -466,14 +472,8 @@ Schedules asynchronous work to be done and returns a promise of the result.
 public func async(work: () throws -> Any) -> Promise {
     return Promise {
         fulfill, reject in
-    
-        do {
-            let result = try work()
-            fulfill(result)
-        }
-        catch let error {
-            reject(error)
-        }
+        let result = try work()
+        fulfill(result)
     }
 }
 
