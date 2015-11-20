@@ -1,0 +1,9 @@
+language: objective-c
+
+xcode_project: iPromise.xcodeproj
+xcode_scheme: iPromise
+osx_image: xcode7.1
+xcode_sdk: iphonesimulator8.3 
+
+script:
+- xcodebuild clean build test -project iPromise.xcodeproj -scheme iPromise
