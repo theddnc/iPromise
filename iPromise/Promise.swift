@@ -115,7 +115,7 @@ public class Promise {
     - Parameter executor: a function with two arguments which is capable of resolving this promise
         (see: ```Promise.ExecutorFunction```)
     */
-    convenience init(executor: ExecutorFunction) {
+    public convenience init(executor: ExecutorFunction) {
         self.init(state: .Pending)
         self.executor = executor
         
