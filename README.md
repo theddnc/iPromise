@@ -1,6 +1,6 @@
 # iPromise
 
-![build](https://travis-ci.org/theddnc/iPromise.svg?branch=master)
+[![build](https://travis-ci.org/theddnc/iPromise.svg?branch=master)](https://travis-ci.org/theddnc/iPromise)
 
 A Promise represents a proxy for a value not necessarily known when the promise
 is created. It allows to associate handlers to an asynchronous action's eventual
@@ -57,7 +57,7 @@ async {
         print("This is quite a large number")
     }
     else {
-        // we simply cannot accept a number this small!gi
+        // we simply cannot accept a number this small!
         throw Error.FailureAndError
     }
     return result
