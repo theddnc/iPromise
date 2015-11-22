@@ -144,9 +144,15 @@ public class Promise {
             if let onSuccess = onSuccess {
                 self.enqueueHandler(onSuccess, withPromise: newPromise, toQueue: onSuccessQueue)
             }
+            else {
+                self.enqueueHandler({ newPromise.fulfill($0) }, withPromise: newPromise, toQueue: onSuccessQueue)
+            }
             
             if let onFailure = onFailure {
                 self.enqueueHandler(onFailure, withPromise: newPromise, toQueue: onFailureQueue)
+            }
+            else {
+                self.enqueueHandler({ newPromise.reject($0) }, withPromise: newPromise, toQueue: onFailureQueue)
             }
             
         case .Fulfilled:
@@ -154,11 +160,17 @@ public class Promise {
             if let onSuccess = onSuccess {
                 self.handleResult(self.result, withHandler: onSuccess, andPromise: newPromise)
             }
+            else {
+                newPromise.fulfill(unwrap(_result))
+            }
             
         case .Rejected:
             
             if let onFailure = onFailure {
                 self.handleResult(self.reason, withHandler: onFailure, andPromise: newPromise)
+            }
+            else {
+                newPromise.reject(unwrap(_reason))
             }
             
         }
@@ -344,8 +356,21 @@ public class Promise {
     - Parameter reason: A rejection reason passed by the executor function.
     */
     private func reject(reason: Any) {
-        self._reason = reason
-        self._state = .Rejected
+        // If result is also a *promise*, append handlers which will resolve ```self```
+        // as soon as result resolves.
+        if let promise = result as? Promise {
+            promise.then({
+                result in
+                self.fulfill(result)
+            }, onFailure: {
+                reason in
+                self.reject(reason)
+            })
+        }
+        else {
+            self._reason = reason
+            self._state = .Rejected
+        }
     }
     
     //
@@ -384,8 +409,7 @@ public class Promise {
         case .Rejected:
             self.executeAll(self.onFailureQueue, withResolution: self.reason)
         case .Pending:
-            //we should throw here
-            break
+            fatalError("Promise has changed its state to .Pending. This is unexpected behaviour - breaking execution.")
         }
     }
     
@@ -429,13 +453,11 @@ public class Promise {
         scheduled handler finishes.
     */
     private func handleResult(result: Any, withHandler handler: HandlerFunction, andPromise promise: Promise) {
-        dispatch_async(dispatch_get_main_queue()) {
-            do {
-                promise.fulfill(try handler(result))
-            }
-            catch let error {
-                promise.reject(error)
-            }
+        do {
+            promise.fulfill(try handler(result))
+        }
+        catch let error {
+            promise.reject(error)
         }
     }
     

@@ -18,6 +18,74 @@ Copy this line into your podfile:
 
 Make sure to also add ```!use_frameworks```
 
+## Examples
+
+#### Simple async task
+
+```swift
+func computeAnswerToLifeTheUniverseAndEverything() -> Int { 
+    // ... computing
+    return 42
+}
+
+async {
+    return computeAnswerToLifeTheUniverseAndEverything()
+}.success { result in
+    // 7.5 million years later
+
+    if let answer = result as? Int {
+        print("Ok, but what is \(answer) the answer to?")
+    }
+
+    return result
+}
+```
+
+#### Catching failure 
+
+```swift
+enum Error: ErrorType {
+    case FailureAndError
+}
+
+
+async {
+    // computing, counting, multiplying
+    return 0.5
+}.success { result in
+    if let computation = result as? Double where computation > 0.5 {
+        print("This is quite a large number")
+    }
+    else {
+        // we simply cannot accept a number this small!gi
+        throw Error.FailureAndError
+    }
+    return result
+}.sucess { result in
+    // this won't be called
+    return result
+}.success { result in
+    // this also won't be called
+    return result
+}.failure { error in
+    // but this will
+    if let error = error as? Error {
+        print("Long computation has failed miserably")
+    } 
+
+    // let's recover
+    return 0.6
+}.success { result in
+    if let computation = result as? Double where computation > 0.5 {
+
+        // result is 0.6!
+        print("This is quite a large number")
+    }
+
+    return result
+}
+```
+
 ## Docs
 
 Documentation is available [here](http://cocoadocs.org/docsets/iPromise/0.1.0/), but

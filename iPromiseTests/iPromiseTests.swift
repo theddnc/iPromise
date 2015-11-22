@@ -355,6 +355,49 @@ class PromiseTests: XCTestCase {
         }
     }
     
+    func testChainFailure() {
+        let successTask: () -> Promise = { return Promise.fulfill("shortSuccess") }
+        let failingTask: () -> Promise = { return Promise.reject("shortFail") }
+        
+        expect { testExpectation in
+            successTask()
+                .then({ result in
+                    if let result = result as? String {
+                        XCTAssertEqual(result, "shortSuccess")
+                        
+                    } else {
+                        XCTFail("Incorrect result type")
+                    }
+                    
+                    return failingTask()
+                }, onFailure: nil)
+                
+                .then({ result in
+                    XCTFail("Expected skip to failure handler")
+                    return successTask()
+                }, onFailure: nil)
+                
+                .then({ result in
+                    XCTFail("Expected call to failure handler")
+                    testExpectation.fulfill()
+                    return result
+                })
+            
+                .failure({ error in
+                    XCTAssertEqual(error as? String, "shortFail")
+                    
+                    return "recovered"
+                })
+            
+                .success({ result in
+                    XCTAssertEqual(result as? String, "recovered")
+                    testExpectation.fulfill()
+                    
+                    return result
+                })
+        }
+    }
+    
     private func promiseArray(bigInt: Int, failing: Bool = false) -> [Promise] {
         var promises = [
             Promise {
