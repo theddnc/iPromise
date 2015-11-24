@@ -8,39 +8,67 @@
 
 import UIKit
 
-/// A Promise represents a proxy for a value not necessarily known when the promise
-/// is created. It allows to associate handlers to an asynchronous action's eventual
-/// success value or failure reason. This lets asynchronous methods return values like 
-/// synchronous methods: instead of the final value, the asynchronous method returns 
-/// a promise of having a value at some point in the future.
-public class Promise {
+/**
+ Describes promise's state. Promise is resolved when it is either fulfilled or
+ rejected.
+ - **Pending**: not resolved - the promise's task has just started
+ - **Fulfilled**: resolved with success - a *result* is available: ```Promise.result```
+ - **Rejected**: resolved with failure - a *reason of rejection* is available: ```Promise.reason```
+*/
+public enum State {
+    
+    /// Promise's resolution is not known yet
+    case Pending
+    
+    /// Promise is fulfilled, ```result``` is available
+    case Fulfilled
+    
+    /// Promise is rejected, ```reason``` is available
+    case Rejected
+}
+
+/**
+ Contains Promise exceptions. 
+ - **NilResult**: thrown when result is nil on fulfill
+ - **NilReason**: thrown when reason is nil on reject
+*/
+public enum PromiseError: ErrorType {
+    
+    /// When promise is fulfilled, and a resolution handler gets a nil result, this
+    /// error is thrown.
+    case NilResult
+    
+    /// When promise is rejected, and a resolution handler gets a nil reason, this
+    /// error is thrown.
+    case NilReason
+}
+
+/**
+ A Promise represents a proxy for a value not necessarily known when the promise
+ is created. It allows to associate handlers to an asynchronous action's eventual
+ success value or failure reason. This lets asynchronous methods return values like
+ synchronous methods: instead of the final value, the asynchronous method returns
+ a promise of having a value at some point in the future.
+ 
+ iPromise ```Promise```s are implemented using generics. This means that type safety
+ is ensured.
+
+
+**TODO**:
+ - verify subclassing capabilities - perhaps it would be okay to create UrlPromise
+    to use with Services
+ - review comments
+*/
+public class Promise<T> {
     
     /**
-    Closure with one argument, which is either promise's result or
-    promise's rejection reason. This closure returns a value which is then
-    passed to a promise returned by ```then()``` call as its result.
+     Closure with two arguments fulfill and reject. The first argument
+     fulfills the promise, the second argument rejects it.
+     
+     If manually creating a promise, calling this arguments will fulfill
+     or reject a promise.
     */
-    public typealias HandlerFunction = ((Any) throws -> Any)
-    
-    /**
-    Closure with two arguments fulfill and reject. The first argument
-    fulfills the promise, the second argument rejects it. We can call
-    these functions once our operation is completed.
-    */
-    public typealias ExecutorFunction = ((Any)->Void, (Any)->Void) throws -> Void
-    
-    /** 
-    Describes promise's state. Promise is resolved when it is either fulfilled or
-    rejected.
-    - **Pending**: not resolved - the promise's task has just started
-    - **Fulfilled**: resolved with success - a *result* is available: ```Promise.result```
-    - **Rejected**: resolved with failure - a *reason of rejection* is available: ```Promise.reason```
-    */
-    public enum State {
-        case Pending
-        case Fulfilled
-        case Rejected
-    }
+    public typealias ExecutorFunction = ((T)->Void, (ErrorType)->Void) throws -> Void
     
     //
     // MARK: - properties
@@ -53,6 +81,7 @@ public class Promise {
         }
     }
     
+    /// Promise's state. Described by ```State``` enum.
     public var state: State {
         get {
             return _state
@@ -60,39 +89,35 @@ public class Promise {
     }
     
     /// Promise's result, if the promise is fulfilled
-    private var _result: Any?
+    private var _result: T?
     
     /// Promise's rejection reason, if the promise is rejected
-    private var _reason: Any?
+    private var _reason: ErrorType?
     
-    /// Queue of HandlerFunctions to be executed on fulfillment
-    private var onSuccessQueue: Queue<HandlerFunction>
+    /// Queue of handler functions to be executed on fulfillment
+    private var onSuccessQueue: Queue<(T) throws -> Any>
     
-    /// Queue of HandlerFunctions to be executed on rejection
-    private var onFailureQueue: Queue<HandlerFunction>
+    /// Queue of handler functions to be executed on rejection
+    private var onFailureQueue: Queue<(ErrorType) throws -> Any>
     
     /// Executor function of this promise
     private var executor: ExecutorFunction?
     
     /** 
     Returns promise's result when ```Promise.state == .Fulfilled```
-    
-    **Note:** this value might be a ```NSNull```
     */
-    public var result: Any {
+    public var result: T? {
         get {
-            return unwrap(_result)
+            return _result
         }
     }
     
     /**
     Returns promise's rejection reason when ```Promise.state == .Rejected```
-    
-    **Note:** this value might be a ```NSNull```
     */
-    public var reason: Any {
+    public var reason: ErrorType? {
         get {
-            return unwrap(_reason)
+            return _reason
         }
     }
 
@@ -106,8 +131,8 @@ public class Promise {
     */
     private init(state: State) {
         self._state = state
-        self.onSuccessQueue = Queue<HandlerFunction>()
-        self.onFailureQueue = Queue<HandlerFunction>()
+        self.onSuccessQueue = Queue<(T) throws -> Any>()
+        self.onFailureQueue = Queue<(ErrorType) throws -> Any>()
     }
     
     /**
@@ -127,80 +152,54 @@ public class Promise {
     //
     
     /**
-    Appends fulfillment and rejection handlers to the promise, and returns a new promise which
-    is to be resolved after execution of either handler, depending of promise's resolution state.
-    - Parameter onSuccess: Function to be executed when this promise is fulfilled. Is optional.
-    - Parameter onFailure: Function to be executed when this promise is rejected. Is optional.
+     Appends fulfillment and rejection handlers to the promise, and returns a new promise will be
+     resolved after execution of either handler, depending of promise's resolution state.
+    
+     - Parameter onSuccess: Function to be executed when this promise is fulfilled. Is optional.
+     - Parameter onFailure: Function to be executed when this promise is rejected. Is optional.
     
     - Returns: A new promise.
     */
-    public func then(onSuccess: HandlerFunction? = nil, onFailure: HandlerFunction? = nil) -> Promise {
-        let newPromise = Promise(state: .Pending)
+    public func then<S>(onSuccess: ((T) throws -> S)? = nil, onFailure: ((ErrorType) throws -> S)? = nil) -> Promise<S> {
+        let newPromise = Promise<S>(state: .Pending)
         
         switch _state {
         
         case .Pending:
-            
-            if let onSuccess = onSuccess {
-                self.enqueueHandler(onSuccess, withPromise: newPromise, toQueue: onSuccessQueue)
-            }
-            else {
-                self.enqueueHandler({ newPromise.fulfill($0) }, withPromise: newPromise, toQueue: onSuccessQueue)
-            }
-            
-            if let onFailure = onFailure {
-                self.enqueueHandler(onFailure, withPromise: newPromise, toQueue: onFailureQueue)
-            }
-            else {
-                self.enqueueHandler({ newPromise.reject($0) }, withPromise: newPromise, toQueue: onFailureQueue)
-            }
+            self.enqueue(onSuccess, inQueue: onSuccessQueue, withPromise: newPromise)
+            self.enqueue(onFailure, inQueue: onFailureQueue, withPromise: newPromise)
             
         case .Fulfilled:
-            
-            if let onSuccess = onSuccess {
-                self.handleResult(self.result, withHandler: onSuccess, andPromise: newPromise)
-            }
-            else {
-                newPromise.fulfill(unwrap(_result))
-            }
+            self.handleSuccess(onSuccess, withPromise: newPromise)
             
         case .Rejected:
-            
-            if let onFailure = onFailure {
-                self.handleResult(self.reason, withHandler: onFailure, andPromise: newPromise)
-            }
-            else {
-                newPromise.reject(unwrap(_reason))
-            }
+            self.handleFailure(onFailure, withPromise: newPromise)
             
         }
-        
         return newPromise
     }
     
     /**
-    Appends a fulfillment handler callback to the promise, and returns a new promise. 
-    
+    Appends a fulfillment handler callback to the promise, and returns a new promise.
     Basically calls ```Promise.then(onSuccess, onFailure: nil)```
     
     - Parameter onSuccess: Function to be executed when this promise is fulfilled.
     
     - Returns: A new promise in the same fashion as a ```then()``` call.
     */
-    public func success(onSuccess: HandlerFunction) -> Promise {
+    public func success<S>(onSuccess: (T) throws -> S) -> Promise<S> {
         return self.then(onSuccess)
     }
     
     /**
     Appends a rejection handler callback to the promise, and returns a new promise
-    
     Basically calls ```Promise.then(nil, onFailure: onFailure)```
     
     - Parameter onFailure: Function to be executed when this promise is rejected.
     
     - Returns: A new promise in the same fashion as a ```then()``` call.
     */
-    public func failure(onFailure: HandlerFunction) -> Promise {
+    public func failure<S>(onFailure: (ErrorType) throws -> S) -> Promise<S> {
         return self.then(nil, onFailure: onFailure)
     }
     
@@ -210,11 +209,11 @@ public class Promise {
     
     /**
     Returns a Promise object that is rejected with the given reason.
-    - Parameter reason: A value which will be set as rejection reason.
+    - Parameter reason: A value (```ErrorType```) which will be set as rejection reason.
     
     - Returns: A rejected promise.
     */
-    public class func reject(reason: Any?) -> Promise {
+    public class func reject(reason: ErrorType) -> Promise {
         let promise = Promise(state: .Rejected)
         promise._reason = reason
         
@@ -226,18 +225,14 @@ public class Promise {
     or the argument itself if the argument is a promise.
     - Parameter result: A value which will be set as promise's fulfillment result. 
         If ```result``` is a promise, this is the value that will be returned.
+     
     - Returns: A fulfilled promise.
     */
-    public class func fulfill(result: Any?) -> Promise {
-        if let promise = result as? Promise {
-            return promise
-        }
-        else {
-            let promise = Promise(state: .Fulfilled)
-            promise._result = result
-            
-            return promise
-        }
+    public class func fulfill(result: T) -> Promise<T> {
+        let promise = Promise(state: .Fulfilled)
+        promise._result = result
+        
+        return promise
     }
     
     /**
@@ -246,15 +241,14 @@ public class Promise {
     - Parameter promises: An array of ```Promise``` objects
     - Returns: A promise, which will be resolved as soon as any of ```promises``` is resolved.
     */
-    public class func race(promises: [Promise]) -> Promise {
-        return Promise {
+    public class func race<S>(promises: [Promise<S>]) -> Promise<S> {
+        return Promise<S> {
             fulfill, reject in
             
             var done: Bool = false
             
             for promise in promises {
-                promise.success {
-                    result in
+                promise.success { (result: S) -> S in
                     if (!done) {
                         synchronized(self, closure: {
                             done = true
@@ -264,8 +258,7 @@ public class Promise {
                     return result
                 }
                 
-                promise.failure {
-                    reason in
+                promise.failure { (reason: ErrorType) -> ErrorType in
                     if (!done) {
                         synchronized(self, closure: {
                             done = true
@@ -286,33 +279,33 @@ public class Promise {
     - Returns: A promise which will be resolved as soon as all of ```promises``` are resolved. 
         This promise's result will be an array of results and rejection reasons.
     */
-    public class func all(promises: [Promise]) -> Promise {
-        return Promise {
+    public class func all<S>(promises: [Promise<S>]) -> Promise<[(S?, ErrorType?)]> {
+        return Promise<[(S?, ErrorType?)]> {
             fulfill, reject in
             
             var finishLineCount = 0
-            var finishLine = Array<Any>(count: promises.count, repeatedValue: "")
+            var finishLine = [(S?, ErrorType?)](count: promises.count, repeatedValue: (nil, nil))
             
             for (i, promise) in promises.enumerate() {
-                promise.success {
-                    p in
+                promise.success { (p: S) in
                     synchronized(finishLineCount) {
-                        finishLine[i] = p
+                        finishLine[i] = (p, nil)
                         finishLineCount++
                         
                         if (finishLineCount == promises.count) {
+                            print(finishLine)
                             fulfill(finishLine)
                         }
                     }
                 }
                 
-                promise.failure {
-                    p in
+                promise.failure { (p: ErrorType) in
                     synchronized(finishLineCount) {
-                        finishLine[i] = p
+                        finishLine[i] = (nil, p)
                         finishLineCount++
                         
                         if (finishLineCount == promises.count) {
+                            print(finishLine)
                             fulfill(finishLine)
                         }
                     }
@@ -344,8 +337,8 @@ public class Promise {
                 self.reject(reason)
             })
         }
-        else {
-            self._result = result
+        else if result is T {
+            self._result = result as? T
             self._state = .Fulfilled
         }
     }
@@ -355,7 +348,7 @@ public class Promise {
     called as soon as this promise is rejected.
     - Parameter reason: A rejection reason passed by the executor function.
     */
-    private func reject(reason: Any) {
+    private func reject(reason: ErrorType) {
         // If result is also a *promise*, append handlers which will resolve ```self```
         // as soon as result resolves.
         if let promise = result as? Promise {
@@ -387,7 +380,7 @@ public class Promise {
         //todo: refactor using nsoperationqueue to allow cancelling of the operations
         dispatch_async(dispatch_get_global_queue(queuePriority, 0)) {
             do {
-                try self.executor?(self.fulfill, self.reject)
+                try self.executor?({ self.fulfill($0) }, self.reject)
             }
             catch let error {
                 self.reject(error)
@@ -405,9 +398,9 @@ public class Promise {
     private func stateChanged(state: State) {
         switch state {
         case .Fulfilled:
-            self.executeAll(self.onSuccessQueue, withResolution: self.result)
+            self.executeSuccess()
         case .Rejected:
-            self.executeAll(self.onFailureQueue, withResolution: self.reason)
+            self.executeFailure()
         case .Pending:
             fatalError("Promise has changed its state to .Pending. This is unexpected behaviour - breaking execution.")
         }
@@ -425,17 +418,14 @@ public class Promise {
     - Parameter toQueue: A queue to attach the handler to. Either ```Promise.onSuccessQueue``` or
         ```Promise.onFailureQueue```
     */
-    private func enqueueHandler(handler: HandlerFunction, withPromise promise: Promise, toQueue queue: Queue<HandlerFunction>) {
-        queue.push({
-            (value) in
+    private func enqueue<S, V>(handler: ((V) throws -> S)?, inQueue queue: Queue<(V) throws -> Any>, withPromise promise:Promise<S>) {
+        queue.push({ value in
             do {
-                // wrap the handler so that it fulfills the promise returned from ```then()```
-                let result = try handler(value)
+                let result = try handler?(value)
                 promise.fulfill(result)
                 return result
             }
             catch let error {
-                // wrap the handler so that it rejects the promise returned from ```then()```
                 promise.reject(error)
                 throw error
             }
@@ -452,9 +442,34 @@ public class Promise {
     - Parameter promise: The promise to be returned from ```then()``` call that will be resolved after the 
         scheduled handler finishes.
     */
-    private func handleResult(result: Any, withHandler handler: HandlerFunction, andPromise promise: Promise) {
+    private func handleSuccess<S>(handler: ((T) throws -> S)?, withPromise promise: Promise<S>) {
         do {
-            promise.fulfill(try handler(result))
+            if let result = self.result, handler = handler {
+                promise.fulfill(try handler(result))
+            }
+            else if let result = self.result {
+                promise.fulfill(result)
+            }
+            else {
+                promise.reject(PromiseError.NilResult)
+            }
+        }
+        catch let error {
+            promise.reject(error)
+        }
+    }
+    
+    private func handleFailure<S>(handler: ((ErrorType) throws -> S)?, withPromise promise: Promise<S>) {
+        do {
+            if let reason = self.reason, handler = handler {
+                promise.fulfill(try handler(reason))
+            }
+            else if let reason = self.reason {
+                promise.reject(reason)
+            }
+            else {
+                promise.reject(PromiseError.NilReason)
+            }
         }
         catch let error {
             promise.reject(error)
@@ -468,14 +483,41 @@ public class Promise {
     - Parameter withResolution: A resolution value to be passed to each action, either
         a ```Promise.result``` or ```Promise.reason```
     */
-    private func executeAll(queue: Queue<HandlerFunction>, withResolution resolution: Any) {
-        while !queue.isEmpty() {
-            let action : HandlerFunction = queue.pop()!
+    private func executeSuccess() {
+        guard let result = self.result else {
+            self.executeFailure()
+            return
+        }
+        
+        while !onSuccessQueue.isEmpty() {
+            let action : (T) throws -> Any = onSuccessQueue.pop()!
             
             dispatch_async(dispatch_get_main_queue()) {
                 do {
+                    try action(result)
                     // ignore the value
-                    try action(resolution)
+                }
+                catch _ {
+                    // inore the error
+                }
+            }
+        }
+    }
+    
+    private func executeFailure() {
+        guard let reason = self.reason else {
+            self._reason = PromiseError.NilReason
+            self.executeFailure()
+            return
+        }
+        
+        while !onFailureQueue.isEmpty() {
+            let action : (ErrorType) throws -> Any = onFailureQueue.pop()!
+            
+            dispatch_async(dispatch_get_main_queue()) {
+                do {
+                    try action(reason)
+                    // ignore the value
                 }
                 catch _ {
                     // inore the error
@@ -491,7 +533,7 @@ Schedules asynchronous work to be done and returns a promise of the result.
 
 - Returns: a promise of the return value of the ```work``` parameter
 */
-public func async(work: () throws -> Any) -> Promise {
+public func async<T>(work: () throws -> T) -> Promise<T> {
     return Promise {
         fulfill, reject in
         let result = try work()
@@ -506,19 +548,4 @@ internal func synchronized(lock: AnyObject, closure: () throws -> Void) {
     objc_sync_enter(lock)
     try! closure()
     objc_sync_exit(lock)
-}
-
-/// Unwraps optional Any-values using reflection
-///
-/// [see this](http://stackoverflow.com/questions/27989094/how-to-unwrap-an-optional-value-from-any-type/32516815#32516815)
-internal func unwrap(any: Any) -> Any {
-    let mi = Mirror(reflecting: any)
-    
-    if mi.displayStyle != .Optional {
-        return any
-    }
-    
-    if mi.children.count == 0 { return NSNull() }
-    let (_, some) = mi.children.first!
-    return some
 }
