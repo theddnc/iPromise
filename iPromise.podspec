@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "iPromise"
-  s.version      = "0.2.0"
+  s.version      = "1.0.1"
   s.summary      = "Javascript promises implemented in Swift 2"
 
   s.description  = <<-DESC
@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
 
   s.platform     = :ios, "8.0"
 
-  s.source       = { :git => "https://github.com/theddnc/iPromise.git", :tag => "0.2.0" }
+  s.source       = { :git => "https://github.com/theddnc/iPromise.git", :tag => "1.0.1" }
   s.source_files  = "iPromise/*"
   s.framework = 'XCTest'
 
