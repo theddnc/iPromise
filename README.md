@@ -18,7 +18,7 @@ iPromise's implementation of Promise class conforms to javascript specification.
 
 Copy this line into your podfile:
 
-```pod 'iPromise', '~> 0.2'```
+```pod 'iPromise', '~> 1.0'```
 
 Make sure to also add ```!use_frameworks```
 
