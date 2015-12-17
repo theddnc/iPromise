@@ -21,15 +21,12 @@ class PromiseTests: XCTestCase {
     func testFulfill() {
         let promise = Promise.fulfill(true)
         
-        XCTAssertEqual(promise.state, Promise.State.Fulfilled, "Promise should be fulfilled.")
+        XCTAssertEqual(promise.state, State.Fulfilled, "Promise should be fulfilled.")
         
         expect { testExpectation in
-            promise.success {
-                (result) in
-                XCTAssertEqual(result as? Bool, true, "Promise's result should be equal to true.")
+            promise.success { result in
+                XCTAssertEqual(result, true, "Promise's result should be equal to true.")
                 testExpectation.fulfill()
-                
-                return result
             }
             
             promise.failure {
@@ -43,23 +40,18 @@ class PromiseTests: XCTestCase {
     Tests promise rejection mechanisms
     */
     func testReject() {
-        let promise = Promise.reject(false)
+        let promise = Promise<Any>.reject(PromiseError.NilReason)
         
-        XCTAssertEqual(promise.state, Promise.State.Rejected, "Promise should be rejected.")
+        XCTAssertEqual(promise.state, State.Rejected, "Promise should be rejected.")
         
         expect { testExpectation in
-            promise.failure {
-                (error) in
-                XCTAssertEqual(error as? Bool, false, "Promise's rejection reason should be equal to false.")
+            promise.failure { error in
+                XCTAssert(error is PromiseError)
                 testExpectation.fulfill()
-
-                return error
             }
             
-            promise.success {
-                result in
+            promise.success { result in
                 XCTFail("Success handler should not have run.")
-                return result
             }
         }
     }
@@ -74,19 +66,13 @@ class PromiseTests: XCTestCase {
         }
         
         expect { testExpectation in
-            promise.success {
-                result in
-                XCTAssertEqual(result as? Bool, true, "Promise's result should be equal to true")
+            promise.success { result in
+                XCTAssertEqual(result, true, "Promise's result should be equal to true")
                 testExpectation.fulfill()
-
-                
-                return result
             }
             
-            promise.failure {
-                error in
+            promise.failure { error in
                 XCTFail("Failure handler should not have run")
-                return error
             }
         }
     }
@@ -95,101 +81,23 @@ class PromiseTests: XCTestCase {
     Tests promise construction capabilities and state watchers
     */
     func testRejectFromExecutor() {
-        let promise = Promise {
+        let promise = Promise<Any> {
             fulfill, reject in
-            reject(false)
+            reject(PromiseError.NilReason)
         }
         
         expect { testExpectation in
-            promise.failure {
-                error in
-                XCTAssertEqual(error as? Bool, false, "Promise's rejection reason should be equal to false")
+            promise.failure { error  in
+                XCTAssert(error is PromiseError)
                 testExpectation.fulfill()
-                
-                return error
             }
             
-            promise.success {
-                result in
+            promise.success { result in
                 XCTFail("Sucess handler should not have run")
-                return result
             }
         }
     }
     
-    /**
-    Tests fulfilling promise with another promise
-    */
-    func testFulfillWithPromise() {
-        let promise = Promise.fulfill(Promise.fulfill(true))
-
-        XCTAssertEqual(promise.state, Promise.State.Fulfilled, "Promise should be fulfilled")
-        
-        expect { testExpectation in
-            promise.success {
-                result in
-                XCTAssertEqual(result as? Bool, true, "Promise's result should be equal to true")
-                testExpectation.fulfill()
-                
-                return result
-            }
-            
-            promise.failure {
-                error in
-                XCTFail("Failure handler should not have run")
-                return error
-            }
-        }
-    }
-    
-    /**
-    Tests fulfilling with promise from executor function
-    */
-    func testFulfillWithPromiseFromExecutor() {
-        let promise = Promise {
-            fulfill, reject in
-            fulfill(Promise.fulfill(true))
-        }
-        
-        expect { testExpectation in
-            promise.success {
-                result in
-                XCTAssertEqual(result as? Bool, true, "Promise's result should be equal to true")
-                testExpectation.fulfill()
-                
-                return result
-            }
-            
-            promise.failure {
-                error in
-                XCTFail("Failure handler should not have run")
-                return error
-            }
-        }
-    }
-    
-    func testFulfillWithFailingPromiseFromExecutor() {
-        let promise = Promise {
-            fulfill, reject in
-            fulfill(Promise.reject(false))
-        }
-        
-        expect { testExpectation in
-            promise.failure {
-                error in
-                XCTAssertEqual(error as? Bool, false, "Promise's rejection reason should be equal to false")
-                testExpectation.fulfill()
-                
-                return error
-            }
-            
-            promise.success {
-                result in
-                XCTFail("Success handler should not have run")
-                return result
-            }
-        }
-    }
     
     func testAsyncReturn() {
         expect { testExpectation in
@@ -197,15 +105,12 @@ class PromiseTests: XCTestCase {
                 return true
             }
             
-            promise.success {
-                result in
-                XCTAssertEqual(result as? Bool, true, "Async result should be true")
+            promise.success { result in
+                XCTAssertEqual(result, true, "Async result should be true")
                 testExpectation.fulfill()
-                return result
             }
             
-            promise.failure {
-                error in
+            promise.failure { error in
                 XCTFail("Failure handler should not have run")
             }
         }
@@ -217,88 +122,58 @@ class PromiseTests: XCTestCase {
                 throw Error.Error
             }
             
-            promise.failure {
-                reason in
+            promise.failure { reason in
                 XCTAssertEqual(reason as? Error, Error.Error, "Async reason should be Error.Error")
                 testExpectation.fulfill()
-                return reason
             }
             
-            promise.success {
-                result in
+            promise.success { result in
                 XCTFail("Success handler should not have run")
-            }
-        }
-    }
-    
-    func testFulfillWithNilValue() {
-        let promise = Promise.fulfill(nil)
-        
-        XCTAssertEqual(promise.state, Promise.State.Fulfilled, "Promise should be fulfilled.")
-        
-        expect { testExpectation in
-            promise.success {
-                (result) in
-                XCTAssertEqual(result as? NSNull, NSNull(), "Result should be nsnull")
-                testExpectation.fulfill()
-                
-                return result
-            }
-            
-            promise.failure {
-                error in
-                XCTFail("Failure handler should not have run.")
             }
         }
     }
     
     func testRace() {
         let bigInt = 10000000
-        let promises: [Promise] = self.promiseArray(bigInt)
+        let promises: [Promise<Int>] = self.promiseArray(bigInt)
         
         expect { testExpectation in
-            let promise = Promise.race(promises)
-            promise.success {
-                result in
-                if let res = result as? Int {
-                    XCTAssertEqual(res, bigInt, "First promise should finish sooner")
-                    testExpectation.fulfill()
-                }
-                else {
-                    XCTFail("Promise's result should be int")
-                }
+            let promise = Promise<Int>.race(promises)
+            promise.success { result -> Int in
+                XCTAssertEqual(result, bigInt, "First promise should finish sooner")
+                testExpectation.fulfill()
                 return result
             }
             
-            promise.failure {
-                error in
+            promise.failure { error in
                 XCTFail("Failure handler should not have run")
             }
         }
     }
     
     func testRaceFailure() {
-        let promises: [Promise] = [
-            Promise.reject(false),
-            Promise.reject(false)
+        let promises: [Promise<Int>] = [
+            Promise.reject(PromiseError.NilReason),
+            Promise.reject(PromiseError.NilReason)
         ]
         
         expect { testExpectation in
-            let promise = Promise.race(promises)
-            promise.failure {
-                error in
-                if let err = error as? Bool {
-                    XCTAssertEqual(err, false, "This race should fail")
-                    testExpectation.fulfill()
+            let promise = Promise<Int>.race(promises)
+            promise.failure { error in
+                if let error = error as? PromiseError {
+                    switch error {
+                    case .NilReason:
+                        testExpectation.fulfill()
+                    default:
+                        XCTFail()
+                    }
                 }
                 else {
-                    XCTFail("Promise's rejection reason should be bool")
+                    XCTFail()
                 }
-                return error
             }
             
-            promise.success {
-                result in
+            promise.success { result in
                 XCTFail("Success handler should not have run")
             }
         }
@@ -306,22 +181,15 @@ class PromiseTests: XCTestCase {
     
     func testAllWithFailure() {
         let bigInt = 10000000
-        let promises: [Promise] = self.promiseArray(bigInt, failing: true)
+        let promises: [Promise<Int>] = self.promiseArray(bigInt, failing: true)
         
         expect { testExpectation in
-            let promise = Promise.all(promises)
-            promise.success {
-                result in
-                if let res = result as? [Any] {
-                    XCTAssertEqual(res[0] as? Int, bigInt, "First promise should yield bigInt")
-                    XCTAssertEqual(res[1] as? Int, 2*bigInt, "Second promise should yield 2*bigInt")
-                    XCTAssertEqual(res[2] as? Bool, false, "Third promise should fail with 'false' as reason")
-                    testExpectation.fulfill()
-                }
-                else {
-                    XCTFail("Promise's result should be an array")
-                }
-                return result
+            let promise = Promise<Any>.all(promises)
+            promise.success { result in
+                XCTAssertEqual(result[0].0, bigInt, "First promise should yield bigInt")
+                XCTAssertEqual(result[1].0, 2*bigInt, "Second promise should yield 2*bigInt")
+                XCTAssert(result[2].1 is PromiseError)
+                testExpectation.fulfill()
             }
             
             promise.failure {
@@ -333,12 +201,13 @@ class PromiseTests: XCTestCase {
     
     func testThrowingFromPromiseHandler() {
         expect { testExpectation in
-            let promise = Promise { fulfill, reject in
+            let promise = Promise<Bool> { fulfill, reject in
                 for _ in 1...1000000 { continue }
                 fulfill(true)
-                }.success {
-                    result in
-                    throw Error.Error
+            }
+            .success {
+                result in
+                throw Error.Error
             }
             
             promise.failure {
@@ -356,60 +225,43 @@ class PromiseTests: XCTestCase {
     }
     
     func testChainFailure() {
-        let successTask: () -> Promise = { return Promise.fulfill("shortSuccess") }
-        let failingTask: () -> Promise = { return Promise.reject("shortFail") }
+        let successTask: () -> Promise<String> = { return Promise.fulfill("shortSuccess") }
         
         expect { testExpectation in
             successTask()
                 .then({ result in
-                    if let result = result as? String {
-                        XCTAssertEqual(result, "shortSuccess")
-                        
-                    } else {
-                        XCTFail("Incorrect result type")
-                    }
-                    
-                    return failingTask()
-                }, onFailure: nil)
-                
+                    XCTAssertEqual(result, "shortSuccess")
+                    throw PromiseError.NilReason
+                })
                 .then({ result in
                     XCTFail("Expected skip to failure handler")
-                    return successTask()
-                }, onFailure: nil)
-                
-                .then({ result in
-                    XCTFail("Expected call to failure handler")
-                    testExpectation.fulfill()
-                    return result
                 })
-            
-                .failure({ error in
-                    XCTAssertEqual(error as? String, "shortFail")
+                .then({ result in
+                    XCTFail("Expected skip to failure handler")
+                    testExpectation.fulfill()
+                })
+                .failure({ error -> String in
+                    XCTAssert(error is PromiseError)
                     
                     return "recovered"
                 })
-            
                 .success({ result in
-                    XCTAssertEqual(result as? String, "recovered")
+                    XCTAssertEqual(result, "recovered")
                     testExpectation.fulfill()
-                    
-                    return result
                 })
         }
     }
     
-    private func promiseArray(bigInt: Int, failing: Bool = false) -> [Promise] {
-        var promises = [
-            Promise {
-                fulfill, reject in
+    private func promiseArray(bigInt: Int, failing: Bool = false) -> [Promise<Int>] {
+        var promises: [Promise<Int>] = [
+            Promise { fulfill, reject in
                 var ret = 0
                 for i in 1...bigInt {
                     ret = i
                 }
                 fulfill(ret)
             },
-            Promise {
-                fulfill, reject in
+            Promise { fulfill, reject in
                 var ret = 0
                 for i in 1...bigInt*2 {
                     ret = i
@@ -419,7 +271,7 @@ class PromiseTests: XCTestCase {
         ]
         
         if failing {
-            promises.append(Promise.reject(false))
+            promises.append(Promise.reject(PromiseError.NilReason))
         }
         
         return promises
