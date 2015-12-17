@@ -166,8 +166,8 @@ public class Promise<T> {
         switch _state {
         
         case .Pending:
-            self.enqueue(onSuccess, inQueue: onSuccessQueue, withPromise: newPromise)
-            self.enqueue(onFailure, inQueue: onFailureQueue, withPromise: newPromise)
+            self.enqueueSuccess(onSuccess, withPromise: newPromise)
+            self.enqueueFailure(onFailure, withPromise: newPromise)
             
         case .Fulfilled:
             self.handleSuccess(onSuccess, withPromise: newPromise)
@@ -418,12 +418,32 @@ public class Promise<T> {
     - Parameter toQueue: A queue to attach the handler to. Either ```Promise.onSuccessQueue``` or
         ```Promise.onFailureQueue```
     */
-    private func enqueue<S, V>(handler: ((V) throws -> S)?, inQueue queue: Queue<(V) throws -> Any>, withPromise promise:Promise<S>) {
-        queue.push({ value in
+    private func enqueueSuccess<S>(handler: ((T) throws -> S)?, withPromise promise:Promise<S>) {
+        self.onSuccessQueue.push({ value in
             do {
                 let result = try handler?(value)
                 promise.fulfill(result)
                 return result
+            }
+            catch let error {
+                promise.reject(error)
+                throw error
+            }
+        })
+    }
+    
+    private func enqueueFailure<S>(handler: ((ErrorType) throws -> S)?, withPromise promise:Promise<S>) {
+        self.onFailureQueue.push({ value in
+            do {
+                if let handler = handler {
+                    let result = try handler(value)
+                    promise.fulfill(result)
+                    return result
+                }
+                else {
+                    promise.reject(value)
+                    throw value
+                }
             }
             catch let error {
                 promise.reject(error)

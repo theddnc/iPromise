@@ -36,6 +36,44 @@ class PromiseTests: XCTestCase {
         }
     }
     
+    func testReadmeTest() {
+        enum Error: ErrorType {
+            case FailureAndError
+        }
+        
+        expect { testEx in
+            async {
+                return 0.5
+            }.then({ result in
+                if result > 0.5 {
+                    print("This is quite a large number")
+                }
+                else {
+                    throw Error.FailureAndError
+                }
+            }).then({ result in
+                // this won't be called
+            }).then({ result in
+                // this won't be called
+            }).failure({ (error) -> Double in
+                // but this will
+                switch error as! Error {
+                case .FailureAndError:
+                    print("Long computation has failed miserably :(")
+                }
+                
+                // let's recover
+                return 0.6
+            }).then ({ result -> Double in
+                if result > 0.5 {
+                    print("This is quite a large number")
+                    testEx.fulfill()
+                }
+                return 0.1
+            })
+        }
+    }
+    
     /**
     Tests promise rejection mechanisms
     */
