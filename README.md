@@ -1,6 +1,10 @@
 # iPromise
 
 [![build](https://travis-ci.org/theddnc/iPromise.svg?branch=master)](https://travis-ci.org/theddnc/iPromise)
+[![CocoaPods](https://img.shields.io/cocoapods/v/iPromise.svg)](https://cocoapods.org/pods/iPromise)
+[![CocoaPods](https://img.shields.io/cocoapods/l/iPromise.svg)](https://cocoapods.org/pods/iPromise)
+[![CocoaPods](https://img.shields.io/cocoapods/p/iPromise.svg)](https://cocoapods.org/pods/iPromise)
+[![CocoaPods](https://img.shields.io/cocoapods/metrics/doc-percent/iPromise.svg)](https://cocoapods.org/pods/iPromise)
 
 A Promise represents a proxy for a value not necessarily known when the promise
 is created. It allows to associate handlers to an asynchronous action's eventual
@@ -75,7 +79,7 @@ async {
 
 ## Docs
 
-Documentation is available [here](http://cocoadocs.org/docsets/iPromise/0.1.0/), but
+Documentation is available [here]http://cocoadocs.org/docsets/iPromise/1.0.1/), but
 since it was generated from code comments you can also read the code, it's not that
 much :)
 
