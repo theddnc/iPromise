@@ -152,7 +152,7 @@ public class Promise<T> {
     //
     
     /**
-     Appends fulfillment and rejection handlers to the promise, and returns a new promise will be
+     Appends fulfillment and rejection handlers to the promise, and returns a new promise that will be
      resolved after execution of either handler, depending of promise's resolution state.
     
      - Parameter onSuccess: Function to be executed when this promise is fulfilled. Is optional.
@@ -165,6 +165,36 @@ public class Promise<T> {
         
         switch _state {
         
+        case .Pending:
+            self.enqueueSuccess(onSuccess, withPromise: newPromise)
+            self.enqueueFailure(onFailure, withPromise: newPromise)
+            
+        case .Fulfilled:
+            self.handleSuccess(onSuccess, withPromise: newPromise)
+            
+        case .Rejected:
+            self.handleFailure(onFailure, withPromise: newPromise)
+            
+        }
+        return newPromise
+    }
+    
+    /**
+     Appends fulfillment and rejection handlers to the promise, and returns a new promise that will be
+     resolved after execution of either handler, depending of promise's resolution state.
+     
+     This variant of then is called when a ```Promise``` resolution handler returns another ```Promise```.
+     
+     - Parameter onSuccess: Function to be executed when this promise is fulfilled. Is optional.
+     - Parameter onFailure: Function to be executed when this promise is rejected. Is optional.
+     
+     - Returns: A new promise.
+    */
+    public func then<S>(onSuccess: ((T) throws -> Promise<S>)? = nil, onFailure: ((ErrorType) throws -> Promise<S>)? = nil) -> Promise<S> {
+        let newPromise = Promise<S>(state: .Pending)
+        
+        switch _state {
+            
         case .Pending:
             self.enqueueSuccess(onSuccess, withPromise: newPromise)
             self.enqueueFailure(onFailure, withPromise: newPromise)
@@ -213,7 +243,7 @@ public class Promise<T> {
     
     - Returns: A rejected promise.
     */
-    public class func reject(reason: ErrorType) -> Promise {
+    public class func reject(reason: ErrorType) -> Promise<T> {
         let promise = Promise(state: .Rejected)
         promise._reason = reason
         
@@ -432,6 +462,31 @@ public class Promise<T> {
         })
     }
     
+    private func enqueueSuccess<S>(handler: ((T) throws -> Promise<S>)?, withPromise promise:Promise<S>) {
+        self.onSuccessQueue.push({ value in
+            do {
+                let result = try handler?(value)
+                
+                // wait for this promises resolution
+                result?.success { (promiseResult) -> S in
+                    promise.fulfill(promiseResult)
+                    return promiseResult
+                }
+                
+                result?.failure { error in
+                    promise.reject(error)
+                    throw error
+                }
+                
+                return result
+            }
+            catch let error {
+                promise.reject(error)
+                throw error
+            }
+        })
+    }
+    
     private func enqueueFailure<S>(handler: ((ErrorType) throws -> S)?, withPromise promise:Promise<S>) {
         self.onFailureQueue.push({ value in
             do {
@@ -451,6 +506,37 @@ public class Promise<T> {
             }
         })
     }
+    
+    private func enqueueFailure<S>(handler: ((ErrorType) throws -> Promise<S>)?, withPromise promise:Promise<S>) {
+        self.onFailureQueue.push({ value in
+            do {
+                if let handler = handler {
+                    let result = try handler(value)
+                    
+                    result.success { promiseResult -> S in
+                        promise.fulfill(promiseResult)
+                        return promiseResult
+                    }
+                    
+                    result.failure { error in
+                        promise.reject(error)
+                        throw error
+                    }
+                    
+                    return result
+                }
+                else {
+                    promise.reject(value)
+                    throw value
+                }
+            }
+            catch let error {
+                promise.reject(error)
+                throw error
+            }
+        })
+    }
+
     
     /**
     Called from ```then()```
@@ -479,10 +565,62 @@ public class Promise<T> {
         }
     }
     
+    private func handleSuccess<S>(handler: ((T) throws -> Promise<S>)?, withPromise promise: Promise<S>) {
+        do {
+            if let result = self.result, handler = handler {
+                let handlerResult = try handler(result)
+                
+                handlerResult.success { promiseResult in
+                    promise.fulfill(promiseResult)
+                }
+                
+                handlerResult.failure { error in
+                    promise.reject(error)
+                    throw error
+                }
+            }
+            else if let result = self.result {
+                promise.fulfill(result)
+            }
+            else {
+                promise.reject(PromiseError.NilResult)
+            }
+        }
+        catch let error {
+            promise.reject(error)
+        }
+    }
+    
     private func handleFailure<S>(handler: ((ErrorType) throws -> S)?, withPromise promise: Promise<S>) {
         do {
             if let reason = self.reason, handler = handler {
                 promise.fulfill(try handler(reason))
+            }
+            else if let reason = self.reason {
+                promise.reject(reason)
+            }
+            else {
+                promise.reject(PromiseError.NilReason)
+            }
+        }
+        catch let error {
+            promise.reject(error)
+        }
+    }
+    
+    private func handleFailure<S>(handler: ((ErrorType) throws -> Promise<S>)?, withPromise promise: Promise<S>) {
+        do {
+            if let reason = self.reason, handler = handler {
+                let handlerResult = try handler(reason)
+                
+                handlerResult.success { promiseResult in
+                    promise.fulfill(promiseResult)
+                }
+                
+                handlerResult.failure { error in
+                    promise.reject(error)
+                    throw error
+                }
             }
             else if let reason = self.reason {
                 promise.reject(reason)

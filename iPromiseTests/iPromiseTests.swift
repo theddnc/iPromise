@@ -290,6 +290,34 @@ class PromiseTests: XCTestCase {
         }
     }
     
+    func testReturningPromiseFromSuccess() {
+        expect { testExpectation in
+            Promise { fulfill, reject in
+                fulfill(10)
+            }.then({ result in
+                return Promise { fulfill, reject in
+                    fulfill(100)
+                }
+            }).then({ result in
+                XCTAssertEqual(result, 100)
+                testExpectation.fulfill()
+            })
+        }
+    }
+    
+    func testReturningPromiseFromFailure() {
+        expect { testExpectation in
+            Promise<Void>.reject(Error.Error).then(nil, onFailure: { error in
+                return Promise { fulfill, reject in
+                    fulfill(100)
+                }
+            }).then({ result in
+                XCTAssertEqual(result, 100)
+                testExpectation.fulfill()
+            })
+        }
+    }
+    
     private func promiseArray(bigInt: Int, failing: Bool = false) -> [Promise<Int>] {
         var promises: [Promise<Int>] = [
             Promise { fulfill, reject in

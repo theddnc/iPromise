@@ -4,7 +4,7 @@
 [![CocoaPods](https://img.shields.io/cocoapods/v/iPromise.svg)](https://cocoapods.org/pods/iPromise)
 [![CocoaPods](https://img.shields.io/cocoapods/l/iPromise.svg)](https://cocoapods.org/pods/iPromise)
 [![CocoaPods](https://img.shields.io/cocoapods/p/iPromise.svg)](https://cocoapods.org/pods/iPromise)
-[![CocoaPods](https://img.shields.io/cocoapods/metrics/doc-percent/iPromise.svg)](https://cocoapods.org/pods/iPromise)
+[![CocoaPods](https://img.shields.io/cocoapods/metrics/doc-percent/iPromise.svg)](http://cocoadocs.org/docsets/iPromise/1.1.0/)
 
 A Promise represents a proxy for a value not necessarily known when the promise
 is created. It allows to associate handlers to an asynchronous action's eventual
@@ -18,7 +18,7 @@ iPromise's implementation of Promise class conforms to javascript specification.
 
 Copy this line into your podfile:
 
-```pod 'iPromise', '~> 1.0'```
+```pod 'iPromise', '~> 1.1'```
 
 Make sure to also add ```!use_frameworks```
 
@@ -77,9 +77,27 @@ async {
 })
 ```
 
+#### Returning a promise from resolution handler:
+
+**Note:** I'm working on allowing shorthand methods here (```sucesss()``` and ```failure```).
+For now use the a little syntax-heavy ```then()``` when returning promises from handlers.
+
+```swift
+Promise { fulfill, reject in
+    fulfill(10)
+}.then({ result in
+    return Promise { fulfill, reject in
+        fulfill(100)
+    }
+}).then({ result in
+    // result is 100!
+    print(result)
+})
+```
+
 ## Docs
 
-Documentation is available [here]http://cocoadocs.org/docsets/iPromise/1.0.1/), but
+Documentation is available [here](http://cocoadocs.org/docsets/iPromise/1.1.0/), but
 since it was generated from code comments you can also read the code, it's not that
 much :)
 

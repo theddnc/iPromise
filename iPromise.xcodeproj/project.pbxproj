@@ -8,10 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		3043A4581BFF9EE3004ED852 /* iPromise.h in Headers */ = {isa = PBXBuildFile; fileRef = 3043A4571BFF9EE3004ED852 /* iPromise.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		3043A45F1BFF9EE3004ED852 /* iPromise.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3043A4541BFF9EE3004ED852 /* iPromise.framework */; settings = {ASSET_TAGS = (); }; };
-		3043A4701BFF9F8B004ED852 /* Promise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A46E1BFF9F8B004ED852 /* Promise.swift */; settings = {ASSET_TAGS = (); }; };
-		3043A4711BFF9F8B004ED852 /* Queue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A46F1BFF9F8B004ED852 /* Queue.swift */; settings = {ASSET_TAGS = (); }; };
-		3043A4731BFF9F9A004ED852 /* iPromiseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A4721BFF9F9A004ED852 /* iPromiseTests.swift */; settings = {ASSET_TAGS = (); }; };
+		3043A45F1BFF9EE3004ED852 /* iPromise.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3043A4541BFF9EE3004ED852 /* iPromise.framework */; };
+		3043A4701BFF9F8B004ED852 /* Promise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A46E1BFF9F8B004ED852 /* Promise.swift */; };
+		3043A4711BFF9F8B004ED852 /* Queue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A46F1BFF9F8B004ED852 /* Queue.swift */; };
+		3043A4731BFF9F9A004ED852 /* iPromiseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A4721BFF9F9A004ED852 /* iPromiseTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
