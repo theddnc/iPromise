@@ -355,21 +355,13 @@ public class Promise<T> {
         resolve before resolving this promise.
     */
     private func fulfill(result: Any) {
-        
-        // If result is also a *promise*, append handlers which will resolve ```self```
-        // as soon as result resolves.
-        if let promise = result as? Promise {
-            promise.then({
-                result in
-                self.fulfill(result)
-            }, onFailure: {
-                reason in
-                self.reject(reason)
-            })
-        }
-        else if result is T {
-            self._result = result as? T
+        if let result = result as? T {
+            self._result = result
             self._state = .Fulfilled
+        }
+        else {
+            // fail silently
+            print("WARNING: Promise was fulfilled with a result that does not match its type.")
         }
     }
     
@@ -379,21 +371,8 @@ public class Promise<T> {
     - Parameter reason: A rejection reason passed by the executor function.
     */
     private func reject(reason: ErrorType) {
-        // If result is also a *promise*, append handlers which will resolve ```self```
-        // as soon as result resolves.
-        if let promise = result as? Promise {
-            promise.then({
-                result in
-                self.fulfill(result)
-            }, onFailure: {
-                reason in
-                self.reject(reason)
-            })
-        }
-        else {
-            self._reason = reason
-            self._state = .Rejected
-        }
+        self._reason = reason
+        self._state = .Rejected
     }
     
     //
@@ -410,6 +389,7 @@ public class Promise<T> {
         //todo: refactor using nsoperationqueue to allow cancelling of the operations
         dispatch_async(dispatch_get_global_queue(queuePriority, 0)) {
             do {
+                // todo investigate wtf
                 try self.executor?({ self.fulfill($0) }, self.reject)
             }
             catch let error {
