@@ -4,7 +4,7 @@
 [![CocoaPods](https://img.shields.io/cocoapods/v/iPromise.svg)](https://cocoapods.org/pods/iPromise)
 [![CocoaPods](https://img.shields.io/cocoapods/l/iPromise.svg)](https://cocoapods.org/pods/iPromise)
 [![CocoaPods](https://img.shields.io/cocoapods/p/iPromise.svg)](https://cocoapods.org/pods/iPromise)
-[![CocoaPods](https://img.shields.io/cocoapods/metrics/doc-percent/iPromise.svg)](http://cocoadocs.org/docsets/iPromise/1.1.1/)
+[![CocoaPods](https://img.shields.io/cocoapods/metrics/doc-percent/iPromise.svg)](http://cocoadocs.org/docsets/iPromise/1.1.2/)
 
 A Promise represents a proxy for a value not necessarily known when the promise
 is created. It allows to associate handlers to an asynchronous action's eventual
@@ -97,7 +97,7 @@ Promise { fulfill, reject in
 
 ## Docs
 
-Documentation is available [here](http://cocoadocs.org/docsets/iPromise/1.1.1/), but
+Documentation is available [here](http://cocoadocs.org/docsets/iPromise/1.1.2/), but
 since it was generated from code comments you can also read the code, it's not that
 much :)
 

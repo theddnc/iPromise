@@ -350,18 +350,16 @@ public class Promise<T> {
     
     /**
     This function is passed as the first argument to the executor function. It should be
-    called as soon as this promise is fulfilled. 
-    - Parameter result: A result passed by the executor function. If this is a promise, wait for it to
-        resolve before resolving this promise.
+    called as soon as this promise is fulfilled.
+    - Parameter result: A result passed by the executor function.
     */
-    private func fulfill(result: Any) {
-        if let result = result as? T {
-            self._result = result
+    private func fulfill<S>(result: S?) {
+        if result is T {
+            self._result = result as? T
             self._state = .Fulfilled
         }
         else {
             // fail silently
-            print("WARNING: Promise was fulfilled with a result that does not match its type.")
         }
     }
     

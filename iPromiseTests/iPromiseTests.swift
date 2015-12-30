@@ -348,7 +348,7 @@ class PromiseTests: XCTestCase {
         
         testClosure(testExpectation)
         
-        waitForExpectationsWithTimeout(5, handler: {
+        waitForExpectationsWithTimeout(10, handler: {
             error in
             XCTAssertNil(error, "Error")
         })
